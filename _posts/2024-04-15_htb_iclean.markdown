@@ -6,9 +6,10 @@ categories: posts htb pentesting
 ---
 iClean is a Linux box created by LazyTitan33 that is rated medium by the HTB community. iClean’s exploit process involves exploiting a web application vulnerable to blind cross-site scripting (XSS), server-side template injection (SSTI), and then privilege escalation via an arbitrary write as root vulnerability in the sudo configuration.
 
-# Enumeration
+## Enumeration
 
 As usual, we start by enumerating the open ports and services on the system.
+
 ```sh
 # Nmap 7.94SVN scan initiated Mon Apr 15 12:07:52 2024 as: nmap -p- -sV -oA 10.10.11.12 -v 10.10.11.12
 Nmap scan report for capiclean.htb (10.10.11.12)
@@ -24,7 +25,8 @@ Service detection performed. Please report any incorrect results at https://nmap
 # Nmap done at Mon Apr 15 12:07:59 2024 -- 1 IP address (1 host up) scanned in 7.04 seconds
 ```
 
-# HTTP
+## HTTP
+
 The only usable listening service at our disposal is HTTP. Browsing to the index page of the site reveals this page:
 
 <!-- iclean/index_page.png -->

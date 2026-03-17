@@ -5,7 +5,9 @@ date:   2019-08-05 00:00:00 -0400
 categories: posts htb pentesting
 ---
 This is my first in a series of write-ups on systems I’ve successfully exploited on HackTheBox. Bastion is a Windows host that at the time of writing has been rated fairly easy by other hackers, which was my experience as well. However, this system was still a fun system to exploit with a novel way of getting user access.
-# Enumeration
+
+## Enumeration
+
 ```sh
 root@kali:bastion# nmap -p- -sV 10.10.10.134
 Starting Nmap 7.70 ( https://nmap.org ) at 2019-08-05 20:49 EDT

@@ -6,8 +6,10 @@ categories: posts htb pentesting
 ---
 Networked is a Linux box created by Guly that is rated fairly easily by the HTB community. Even though it was fairly easy, I got some good practice with command injection vulnerabilities and circumventing file verification methods.
 
-# Enumeration
+## Enumeration
+
 Let’s start by taking a look at what services are running on the box using nmap.
+
 ```sh
 Starting Nmap 7.80 ( https://nmap.org ) at 2019-08-30 16:16 EDT
 Nmap scan report for 10.10.10.146
@@ -22,7 +24,8 @@ Service detection performed. Please report any incorrect results at https://nmap
 Nmap done: 1 IP address (1 host up) scanned in 1875.57 seconds
 ```
 
-# HTTP
+## HTTP
+
 The only usable listening service at our disposal is HTTP. Browsing to the index page of the site reveals this page:
 
 <!-- posts/networked/index_page.pnmg -->
