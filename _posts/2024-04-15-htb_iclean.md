@@ -29,4 +29,5 @@ Service detection performed. Please report any incorrect results at https://nmap
 
 The only usable listening service at our disposal is HTTP. Browsing to the index page of the site reveals this page:
 
-<!-- iclean/index_page.png -->
+![Index page for a website called "Capiclean". Includes a Login button, a search bar, a hamburger menu, and the content "KEEP YOUR HOUSE CLEAN" "Let us take care of the choring so that you can focus on what really matters - running your business or enjoying your home."](/assets/iclean/index_page.png)
+
