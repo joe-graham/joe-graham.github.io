@@ -1,2 +1,3 @@
 # joe-graham.github.io
-Website on GitHub Pages
+
+Blog for various things I've worked on and am working on. https://joe-graham.github.io
