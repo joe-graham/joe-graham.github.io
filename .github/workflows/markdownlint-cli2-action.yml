@@ -1,0 +1,9 @@
+name: markdownlint-cli2
+run-name: Running markdownlint-cli2 in ${{ github.action }}
+on: [push]
+jobs:
+    markdownlint-cli2:
+        runs-on: ubuntu-latest
+        steps:
+        - name: markdownlint-cli2-action
+          uses: DavidAnson/markdownlint-cli2-action@v22.0.0
