@@ -1,5 +1,5 @@
 name: markdownlint-cli2
-run-name: Running markdownlint-cli2 in ${{ github.action }}
+run-name: Linting Markdown files
 on: [push]
 jobs:
     markdownlint-cli2:
@@ -7,3 +7,7 @@ jobs:
         steps:
         - name: markdownlint-cli2-action
           uses: DavidAnson/markdownlint-cli2-action@v22.0.0
+          with:
+            globs: |
+                *.md
+                _posts/*.md
