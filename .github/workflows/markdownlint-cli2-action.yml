@@ -1,0 +1,14 @@
+name: markdownlint-cli2
+run-name: Linting Markdown files
+on: [push]
+jobs:
+    markdownlint-cli2:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v6
+        - name: markdownlint-cli2-action
+          uses: DavidAnson/markdownlint-cli2-action@v22.0.0
+          with:
+            globs: |
+                *.md
+                _posts/*.md
